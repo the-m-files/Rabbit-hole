@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+</head>
+<body>
+    <script type="py">
+      import requests
+import random
+import textwrap
+import time
+import sys
+
+WIKI_API = "https://en.wikipedia.org/api/rest_v1/page/summary/"
+
+def type_text(text, speed=0.03):
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(speed)
+    print()
+
+def get_topic_data(topic):
+    url = WIKI_API + topic.replace(" ", "_")
+    headers = {"User-Agent": "RabbitHoleApp/1.0"}
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            return {"title": topic, "summary": "Could not find information."}
+        data = response.json()
+        return {
+            "title": data.get("title", topic),
+            "summary": data.get("extract", "No summary found.")
+        }
+    except Exception as e:
+        return {"title": topic, "summary": f"Error: {e}"}
+
+def get_related_topics(topic):
+    search_url = "https://en.wikipedia.org/w/api.php"
+    params = {
+        "action": "query",
+        "format": "json",
+        "titles": topic,
+        "prop": "links",
+        "pllimit": 20
+    }
+    headers = {"User-Agent": "RabbitHoleApp/1.0"}
+    try:
+        response = requests.get(search_url, params=params, headers=headers)
+        data = response.json()
+        pages = data["query"]["pages"]
+        related = []
+        for page_id in pages:
+            links = pages[page_id].get("links", [])
+            for link in links:
+                title = link["title"]
+                # Filter out meta-pages and very long titles
+                if ":" not in title and len(title) < 40:
+                    related.append(title)
+        return related
+    except Exception as e:
+        print("Error fetching related topics:", e)
+        return []
+
+def print_card(title, summary):
+    print("\n" + "=" * 60)
+    type_text(f"TOPIC: {title}", 0.02)
+    print("=" * 60)
+    wrapped = textwrap.fill(summary, width=60)
+    type_text(wrapped, 0.005)
+    print("=" * 60)
+
+def generate_conspiracy(path):
+    if len(path) < 2:
+        return "No meaningful pattern could be extracted from such a shallow traversal."
+
+    openings = [
+        "ANALYSIS COMPLETE: non-random structure detected.",
+        "PATTERN ENGINE ACTIVE: reconstructing hidden relational map...",
+        "WARNING: semantic drift has exceeded normal thresholds.",
+        "OBSERVATION: topic sequence exhibits self-similarity."
+    ]
+    linkers = [
+        "is not isolated from",
+        "exhibits hidden correlation with",
+        "forms latent structure with",
+        "shows recursive linkage to"
+    ]
+    escalation = [
+        "This implies a layered informational architecture.",
+        "Such transitions are unlikely without structured influence.",
+        "The traversal resembles a guided path rather than a random walk."
+    ]
+    endings = [
+        "NOTE: interpretation is probabilistic.",
+        "SYSTEM WARNING: excessive pattern interpretation detected.",
+        "CONCLUSION: structure may be emergent rather than intentional."
+    ]
+
+    output = [random.choice(openings), ""]
+    for i in range(len(path) - 1):
+        output.append(f"{path[i]} {random.choice(linkers)} {path[i+1]}.")
+        if random.random() > 0.7:
+            output.append(random.choice(escalation))
+    
+    output.append("\n" + random.choice(endings))
+    return "\n".join(output)
+
+def fake_system_log(topic_a, topic_b, depth):
+    logs = [
+        f"[WARN] semantic drift detected between '{topic_a}' and '{topic_b}'",
+        f"[TRACE] recursive link stabilized at depth {depth}",
+        f"[INFO] background correlation increased: {random.randint(12, 67)}%",
+        f"[ALERT] repeated conceptual signature emerging"
+    ]
+    return random.choice(logs)
+
+def rabbit_hole(start_topic):
+    current_topic = start_topic
+    depth = 1
+    path = []
+
+    while True:
+        path.append(current_topic)
+        print("\n" + "=" * 60)
+        type_text(f"DEPTH LEVEL {depth}", 0.02)
+        print("=" * 60)
+        
+        type_text("\nSearching the internet...", 0.03)
+        time.sleep(1)
+
+        data = get_topic_data(current_topic)
+        print_card(data["title"], data["summary"])
+
+        related = get_related_topics(current_topic)
+        if not related:
+            type_text("\nThe trail went cold... no further links found.", 0.03)
+            break
+
+        next_topic = random.choice(related)
+        type_text("\nOne thing leads to another...", 0.03)
+        time.sleep(1)
+        type_text(f"'{current_topic}' connects to '{next_topic}'", 0.03)
+
+        if random.random() > 0.4:
+            print("\n" + fake_system_log(current_topic, next_topic, depth))
+
+        choice = input("\nGo deeper? (y/n): ").lower()
+        if choice != 'y':
+            type_text("\nCompiling hidden connections...", 0.03)
+            time.sleep(2)
+            report = generate_conspiracy(path)
+            print("\n" + "=" * 60)
+            type_text("CLASSIFIED PATTERN REPORT", 0.02)
+            print("=" * 60)
+            type_text(report, 0.01)
+            print("=" * 60)
+            type_text("\nYou escaped the rabbit hole.", 0.03)
+            break
+
+        current_topic = next_topic
+        depth += 1
+
+if __name__ == "__main__":
+    print("""
+██████╗  █████╗ ██████╗ ██████╗ ██╗████████╗
+██╔══██╗██╔══██╗██╔══██╗██╔══██╗██║╚══██╔══╝
+██████╔╝███████║██████╔╝██████╔╝██║   ██║   
+██╔══██╗██╔══██║██╔══██╗██╔══██╗██║   ██║   
+██║  ██║██║  ██║██████╔╝██████╔╝██║   ██║   
+╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═════╝ ╚═╝   ╚═╝   
+        INTERNET RABBIT HOLE GENERATOR
+    """)
+    start = input("Enter a topic to start: ")
+    rabbit_hole(start)
+    </script>
+</body>
+</html>
