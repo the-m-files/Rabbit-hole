@@ -1,179 +1,122 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
+    <title>Internet Rabbit Hole</title>
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <style>
+        body { background-color: #0c0c0c; color: #00ff00; font-family: monospace; padding: 20px; }
+        #output { white-space: pre-wrap; margin-top: 20px; }
+        input { background: #000; color: #00ff00; border: 1px solid #00ff00; padding: 5px; }
+        button { background: #00ff00; color: #000; border: none; padding: 5px 10px; cursor: pointer; }
+    </style>
 </head>
 <body>
-    <script type="py">
-      import requests
-import random
-import textwrap
-import time
-import sys
-
-WIKI_API = "https://en.wikipedia.org/api/rest_v1/page/summary/"
-
-def type_text(text, speed=0.03):
-    for char in text:
-        sys.stdout.write(char)
-        sys.stdout.flush()
-        time.sleep(speed)
-    print()
-
-def get_topic_data(topic):
-    url = WIKI_API + topic.replace(" ", "_")
-    headers = {"User-Agent": "RabbitHoleApp/1.0"}
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            return {"title": topic, "summary": "Could not find information."}
-        data = response.json()
-        return {
-            "title": data.get("title", topic),
-            "summary": data.get("extract", "No summary found.")
-        }
-    except Exception as e:
-        return {"title": topic, "summary": f"Error: {e}"}
-
-def get_related_topics(topic):
-    search_url = "https://en.wikipedia.org/w/api.php"
-    params = {
-        "action": "query",
-        "format": "json",
-        "titles": topic,
-        "prop": "links",
-        "pllimit": 20
-    }
-    headers = {"User-Agent": "RabbitHoleApp/1.0"}
-    try:
-        response = requests.get(search_url, params=params, headers=headers)
-        data = response.json()
-        pages = data["query"]["pages"]
-        related = []
-        for page_id in pages:
-            links = pages[page_id].get("links", [])
-            for link in links:
-                title = link["title"]
-                # Filter out meta-pages and very long titles
-                if ":" not in title and len(title) < 40:
-                    related.append(title)
-        return related
-    except Exception as e:
-        print("Error fetching related topics:", e)
-        return []
-
-def print_card(title, summary):
-    print("\n" + "=" * 60)
-    type_text(f"TOPIC: {title}", 0.02)
-    print("=" * 60)
-    wrapped = textwrap.fill(summary, width=60)
-    type_text(wrapped, 0.005)
-    print("=" * 60)
-
-def generate_conspiracy(path):
-    if len(path) < 2:
-        return "No meaningful pattern could be extracted from such a shallow traversal."
-
-    openings = [
-        "ANALYSIS COMPLETE: non-random structure detected.",
-        "PATTERN ENGINE ACTIVE: reconstructing hidden relational map...",
-        "WARNING: semantic drift has exceeded normal thresholds.",
-        "OBSERVATION: topic sequence exhibits self-similarity."
-    ]
-    linkers = [
-        "is not isolated from",
-        "exhibits hidden correlation with",
-        "forms latent structure with",
-        "shows recursive linkage to"
-    ]
-    escalation = [
-        "This implies a layered informational architecture.",
-        "Such transitions are unlikely without structured influence.",
-        "The traversal resembles a guided path rather than a random walk."
-    ]
-    endings = [
-        "NOTE: interpretation is probabilistic.",
-        "SYSTEM WARNING: excessive pattern interpretation detected.",
-        "CONCLUSION: structure may be emergent rather than intentional."
-    ]
-
-    output = [random.choice(openings), ""]
-    for i in range(len(path) - 1):
-        output.append(f"{path[i]} {random.choice(linkers)} {path[i+1]}.")
-        if random.random() > 0.7:
-            output.append(random.choice(escalation))
+    <h1>INTERNET RABBIT HOLE GENERATOR</h1>
     
-    output.append("\n" + random.choice(endings))
-    return "\n".join(output)
+    <div id="ui-area">
+        <input type="text" id="topic-input" placeholder="Enter a topic...">
+        <button id="start-btn" py-click="start_process">GO DEEPER</button>
+    </div>
 
-def fake_system_log(topic_a, topic_b, depth):
-    logs = [
-        f"[WARN] semantic drift detected between '{topic_a}' and '{topic_b}'",
-        f"[TRACE] recursive link stabilized at depth {depth}",
-        f"[INFO] background correlation increased: {random.randint(12, 67)}%",
-        f"[ALERT] repeated conceptual signature emerging"
-    ]
-    return random.choice(logs)
+    <div id="output"></div>
 
-def rabbit_hole(start_topic):
-    current_topic = start_topic
-    depth = 1
-    path = []
+    <py-config>
+        packages = ["requests", "pyodide-http"]
+    </py-config>
 
-    while True:
-        path.append(current_topic)
-        print("\n" + "=" * 60)
-        type_text(f"DEPTH LEVEL {depth}", 0.02)
-        print("=" * 60)
-        
-        type_text("\nSearching the internet...", 0.03)
-        time.sleep(1)
+    <script type="py">
+        import asyncio
+        import random
+        import textwrap
+        import sys
+        # This makes 'requests' work in the browser
+        import pyodide_http
+        pyodide_http.patch_all()
+        import requests
+        from pyscript import document
 
-        data = get_topic_data(current_topic)
-        print_card(data["title"], data["summary"])
+        WIKI_API = "https://en.wikipedia.org/api/rest_v1/page/summary/"
+        path = []
+        depth = 1
 
-        related = get_related_topics(current_topic)
-        if not related:
-            type_text("\nThe trail went cold... no further links found.", 0.03)
-            break
+        async def type_text(text, speed=0.01):
+            out = document.getElementById("output")
+            for char in text:
+                out.innerHTML += char
+                await asyncio.sleep(speed)
+            out.innerHTML += "\n"
 
-        next_topic = random.choice(related)
-        type_text("\nOne thing leads to another...", 0.03)
-        time.sleep(1)
-        type_text(f"'{current_topic}' connects to '{next_topic}'", 0.03)
+        def get_topic_data(topic):
+            url = WIKI_API + topic.replace(" ", "_")
+            try:
+                response = requests.get(url)
+                data = response.json()
+                return {"title": data.get("title", topic), "summary": data.get("extract", "No summary found.")}
+            except:
+                return {"title": topic, "summary": "Connection lost..."}
 
-        if random.random() > 0.4:
-            print("\n" + fake_system_log(current_topic, next_topic, depth))
+        def get_related_topics(topic):
+            search_url = "https://en.wikipedia.org/w/api.php"
+            params = {"action": "query", "format": "json", "titles": topic, "prop": "links", "pllimit": 10}
+            try:
+                r = requests.get(search_url, params=params)
+                pages = r.json()["query"]["pages"]
+                for p in pages:
+                    return [l["title"] for l in pages[p].get("links", []) if ":" not in l["title"]]
+            except:
+                return []
 
-        choice = input("\nGo deeper? (y/n): ").lower()
-        if choice != 'y':
-            type_text("\nCompiling hidden connections...", 0.03)
-            time.sleep(2)
-            report = generate_conspiracy(path)
-            print("\n" + "=" * 60)
-            type_text("CLASSIFIED PATTERN REPORT", 0.02)
-            print("=" * 60)
-            type_text(report, 0.01)
-            print("=" * 60)
-            type_text("\nYou escaped the rabbit hole.", 0.03)
-            break
+        async def start_process(event):
+            global depth, path
+            topic = document.getElementById("topic-input").value
+            if not topic: return
+            
+            # Hide input to focus on the experience
+            document.getElementById("ui-area").style.display = "none"
+            await run_step(topic)
 
-        current_topic = next_topic
-        depth += 1
+        async def run_step(current_topic):
+            global depth, path
+            path.append(current_topic)
+            
+            await type_text(f"\n--- DEPTH LEVEL {depth} ---", 0.02)
+            await type_text("Accessing encrypted archives...", 0.03)
+            
+            data = get_topic_data(current_topic)
+            await type_text(f"\nTOPIC: {data['title']}", 0.01)
+            await type_text(textwrap.fill(data['summary'], width=60), 0.002)
+            
+            related = get_related_topics(current_topic)
+            if not related:
+                await type_text("\nThe trail went cold.", 0.05)
+                return
 
-if __name__ == "__main__":
-    print("""
-██████╗  █████╗ ██████╗ ██████╗ ██╗████████╗
-██╔══██╗██╔══██╗██╔══██╗██╔══██╗██║╚══██╔══╝
-██████╔╝███████║██████╔╝██████╔╝██║   ██║   
-██╔══██╗██╔══██║██╔══██╗██╔══██╗██║   ██║   
-██║  ██║██║  ██║██████╔╝██████╔╝██║   ██║   
-╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═════╝ ╚═╝   ╚═╝   
-        INTERNET RABBIT HOLE GENERATOR
-    """)
-    start = input("Enter a topic to start: ")
-    rabbit_hole(start)
+            next_topic = random.choice(related)
+            await type_text(f"\nLink found: {current_topic} -> {next_topic}", 0.02)
+            
+            # Create a simple choice in the UI
+            out = document.getElementById("output")
+            out.innerHTML += f"<br><button onclick='window.continueRabbit(\"{next_topic}\")'>GO DEEPER</button> "
+            out.innerHTML += f"<button onclick='window.stopRabbit()'>ESCAPE</button><br>"
+
+        # Exposed functions for the buttons to call
+        from pyodide.ffi import create_proxy
+
+        async def continue_rabbit(next_topic):
+            global depth
+            depth += 1
+            await run_step(next_topic)
+
+        async def stop_rabbit():
+            await type_text("\nCompiling pattern report...", 0.05)
+            # You would insert your conspiracy generator logic here
+            await type_text("\nSYSTEM SHUTDOWN. You are safe... for now.", 0.05)
+
+        import window
+        window.continueRabbit = create_proxy(continue_rabbit)
+        window.stopRabbit = create_proxy(stop_rabbit)
     </script>
 </body>
 </html>
