@@ -1,122 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Internet Rabbit Hole</title>
-    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
-    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <meta charset="UTF-8">
+    <title>Rabbit Hole Terminal</title>
     <style>
-        body { background-color: #0c0c0c; color: #00ff00; font-family: monospace; padding: 20px; }
-        #output { white-space: pre-wrap; margin-top: 20px; }
-        input { background: #000; color: #00ff00; border: 1px solid #00ff00; padding: 5px; }
-        button { background: #00ff00; color: #000; border: none; padding: 5px 10px; cursor: pointer; }
+        body { background: #000; color: #00ff00; font-family: 'Courier New', Courier, monospace; margin: 0; padding: 20px; overflow: hidden; }
+        #terminal { height: 90vh; overflow-y: auto; scroll-behavior: smooth; }
+        .input-line { display: flex; align-items: center; }
+        input { background: transparent; border: none; color: #00ff00; font-family: inherit; font-size: inherit; outline: none; flex-grow: 1; }
+        .system-log { color: #ff00ff; font-style: italic; opacity: 0.7; }
+        .wiki-title { color: #fff; font-weight: bold; text-transform: uppercase; }
+        hr { border: 0; border-top: 1px solid #00ff00; margin: 10px 0; }
     </style>
 </head>
 <body>
-    <h1>INTERNET RABBIT HOLE GENERATOR</h1>
-    
-    <div id="ui-area">
-        <input type="text" id="topic-input" placeholder="Enter a topic...">
-        <button id="start-btn" py-click="start_process">GO DEEPER</button>
+    <div id="terminal">
+        <div>██║ RABBIT HOLE SYSTEM v1.0.4 ║██</div>
+        <div>Initializing semantic bridge...</div><br>
+    </div>
+    <div class="input-line">
+        <span>>&nbsp;</span><input type="text" id="cmd" autofocus autocomplete="off">
     </div>
 
-    <div id="output"></div>
+    <script>
+        const terminal = document.getElementById('terminal');
+        const input = document.getElementById('cmd');
+        let path = [];
+        let state = "START"; 
+        let currentTopic = "";
+        let nextTopic = "";
 
-    <py-config>
-        packages = ["requests", "pyodide-http"]
-    </py-config>
-
-    <script type="py">
-        import asyncio
-        import random
-        import textwrap
-        import sys
-        # This makes 'requests' work in the browser
-        import pyodide_http
-        pyodide_http.patch_all()
-        import requests
-        from pyscript import document
-
-        WIKI_API = "https://en.wikipedia.org/api/rest_v1/page/summary/"
-        path = []
-        depth = 1
-
-        async def type_text(text, speed=0.01):
-            out = document.getElementById("output")
-            for char in text:
-                out.innerHTML += char
-                await asyncio.sleep(speed)
-            out.innerHTML += "\n"
-
-        def get_topic_data(topic):
-            url = WIKI_API + topic.replace(" ", "_")
-            try:
-                response = requests.get(url)
-                data = response.json()
-                return {"title": data.get("title", topic), "summary": data.get("extract", "No summary found.")}
-            except:
-                return {"title": topic, "summary": "Connection lost..."}
-
-        def get_related_topics(topic):
-            search_url = "https://en.wikipedia.org/w/api.php"
-            params = {"action": "query", "format": "json", "titles": topic, "prop": "links", "pllimit": 10}
-            try:
-                r = requests.get(search_url, params=params)
-                pages = r.json()["query"]["pages"]
-                for p in pages:
-                    return [l["title"] for l in pages[p].get("links", []) if ":" not in l["title"]]
-            except:
-                return []
-
-        async def start_process(event):
-            global depth, path
-            topic = document.getElementById("topic-input").value
-            if not topic: return
+        async function typeText(text, isLog = false) {
+            const line = document.createElement('div');
+            if (isLog) line.className = 'system-log';
+            terminal.appendChild(line);
             
-            # Hide input to focus on the experience
-            document.getElementById("ui-area").style.display = "none"
-            await run_step(topic)
+            for (let i = 0; i < text.length; i++) {
+                line.textContent += text[i];
+                await new Promise(r => setTimeout(r, 5));
+            }
+            terminal.scrollTop = terminal.scrollHeight;
+        }
 
-        async def run_step(current_topic):
-            global depth, path
-            path.append(current_topic)
+        async function fetchWiki(topic) {
+            const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${topic.replace(/ /g, '_')}`;
+            const res = await fetch(url);
+            return await res.json();
+        }
+
+        async function fetchRelated(topic) {
+            const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&titles=${topic}&prop=links&pllimit=20`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const pages = data.query.pages;
+            const links = pages[Object.keys(pages)[0]].links || [];
+            return links.map(l => l.title).filter(t => !t.includes(':'));
+        }
+
+        async function processCommand(val) {
+            const cmd = val.trim();
+            if (!cmd && state !== "GAME") return;
+
+            if (state === "START") {
+                currentTopic = cmd;
+                await runStep();
+            } else if (state === "CHOICE") {
+                if (cmd.toLowerCase() === 'y') {
+                    currentTopic = nextTopic;
+                    await runStep();
+                } else {
+                    state = "END";
+                    await typeText("\n[ANALYSIS] COMPILING PATTERN REPORT...");
+                    await new Promise(r => setTimeout(r, 1000));
+                    await typeText("THE TRAIL: " + path.join(" -> "));
+                    await typeText("\nSIGNAL LOST. Press Refresh to reboot.");
+                    input.disabled = true;
+                }
+            }
+        }
+
+        async function runStep() {
+            state = "WAITING";
+            path.push(currentTopic);
+            await typeText(`\nSEARCHING: ${currentTopic}...`);
             
-            await type_text(f"\n--- DEPTH LEVEL {depth} ---", 0.02)
-            await type_text("Accessing encrypted archives...", 0.03)
-            
-            data = get_topic_data(current_topic)
-            await type_text(f"\nTOPIC: {data['title']}", 0.01)
-            await type_text(textwrap.fill(data['summary'], width=60), 0.002)
-            
-            related = get_related_topics(current_topic)
-            if not related:
-                await type_text("\nThe trail went cold.", 0.05)
-                return
+            try {
+                const data = await fetchWiki(currentTopic);
+                await typeText(`----------------------------------------------------`);
+                await typeText(`TOPIC: ${data.title}`);
+                await typeText(data.extract || "No data found.");
+                await typeText(`----------------------------------------------------`);
 
-            next_topic = random.choice(related)
-            await type_text(f"\nLink found: {current_topic} -> {next_topic}", 0.02)
-            
-            # Create a simple choice in the UI
-            out = document.getElementById("output")
-            out.innerHTML += f"<br><button onclick='window.continueRabbit(\"{next_topic}\")'>GO DEEPER</button> "
-            out.innerHTML += f"<button onclick='window.stopRabbit()'>ESCAPE</button><br>"
+                const related = await fetchRelated(currentTopic);
+                nextTopic = related[Math.floor(Math.random() * related.length)];
+                
+                if (Math.random() > 0.5) {
+                    await typeText(`[WARN] Semantic drift detected: ${Math.floor(Math.random()*100)}%`, true);
+                }
 
-        # Exposed functions for the buttons to call
-        from pyodide.ffi import create_proxy
+                await typeText(`\nCONNECTION FOUND: ${nextTopic}`);
+                await typeText("GO DEEPER? (y/n)");
+                state = "CHOICE";
+            } catch (e) {
+                await typeText("ERROR: CONNECTION TIMEOUT");
+            }
+        }
 
-        async def continue_rabbit(next_topic):
-            global depth
-            depth += 1
-            await run_step(next_topic)
+        input.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const val = input.value;
+                input.value = '';
+                const userLine = document.createElement('div');
+                userLine.textContent = `> ${val}`;
+                terminal.appendChild(userLine);
+                await processCommand(val);
+            }
+        });
 
-        async def stop_rabbit():
-            await type_text("\nCompiling pattern report...", 0.05)
-            # You would insert your conspiracy generator logic here
-            await type_text("\nSYSTEM SHUTDOWN. You are safe... for now.", 0.05)
-
-        import window
-        window.continueRabbit = create_proxy(continue_rabbit)
-        window.stopRabbit = create_proxy(stop_rabbit)
+        typeText("ENTER STARTING TOPIC TO BEGIN:");
     </script>
 </body>
 </html>
