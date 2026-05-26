@@ -1,0 +1,53 @@
+body {
+
+    background: black;
+    color: #00ff00;
+
+    font-family: "Courier New", monospace;
+
+    padding: 20px;
+    margin: 0;
+
+    overflow: hidden;
+}
+
+#terminal {
+
+    height: 90vh;
+
+    overflow-y: auto;
+
+    white-space: pre-wrap;
+}
+
+.input-line {
+
+    display: flex;
+
+    align-items: center;
+}
+
+input {
+
+    background: transparent;
+
+    border: none;
+
+    color: #00ff00;
+
+    font-size: 16px;
+
+    outline: none;
+
+    width: 100%;
+}
+
+.system-log {
+
+    color: #ff00ff;
+}
+
+.report {
+
+    color: #00ffff;
+}
